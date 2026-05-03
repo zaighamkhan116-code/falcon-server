@@ -118,7 +118,7 @@ def dashboard():
 
     i = 1
 
-        for acc, balance in data:
+    for acc, balance in data:
 
         status = licenses.get(acc, "blocked")
 
