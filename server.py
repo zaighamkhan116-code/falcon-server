@@ -60,20 +60,24 @@ def check():
         data = json.loads(raw)
     except:
         data = request.form.to_dict()
-
-    acc = str(data.get("account", ""))
+    if not data:
+        data = request.args.to_dict()
+        acc = str(data.get("account", ""))
     return jsonify({"status": licenses.get(acc, "blocked")})
 
 # ================= UPDATE =================
 @app.route("/update", methods=["POST"])
 def update():
     raw = request.data.decode("utf-8").strip().replace("\x00","")
-
+    print("RAW DATA:", raw)
+    
     try:
         data = json.loads(raw)
     except:
         data = request.form.to_dict()
-
+    if not data:
+        data = request.args.to_dict()
+   
     acc = str(data.get("account", "0"))
     balance = float(data.get("balance", 0))
     equity = float(data.get("equity", 0))
