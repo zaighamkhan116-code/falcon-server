@@ -252,14 +252,19 @@ def dashboard():
             <h3>Add / Update Account</h3>
             <form action="/set" method="post">
             <input type="hidden" name="key" value="MCdgsp4@">
-                Account:<br><input name="account"><br>
-                Status:<br>
-                <select name="status">
-                    <option value="active">Active</option>
-                    <option value="blocked">Blocked</option>
-                </select><br><br>
-                <button type="submit">Save</button>
+
+            Account:<br>
+            <input name="account" value="262793453" required><br>
+
+            Status:<br>
+            <select name="status">
+              <option value="active" {"selected" if status=="active" else ""}>Active</option>
+              <option value="blocked" {"selected" if status=="blocked" else ""}>Blocked</option>
+            </select>
+
+            <button type="submit">Save</button>
             </form>
+            
         </div>
     </div>
 
