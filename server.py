@@ -118,9 +118,9 @@ def dashboard():
 
     i = 1
 
-    for acc, balance in data:
+        for acc, balance in data:
 
-                     status = licenses.get(acc, "blocked")
+        status = licenses.get(acc, "blocked")
 
         c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND date(date)=?", (acc, today()))
         daily = c.fetchone()[0] or 0
