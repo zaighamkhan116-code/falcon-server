@@ -23,10 +23,9 @@ def init_db():
     """)
 
     c.execute("""
-    CREATE TABLE IF NOT EXISTS profits(
-        account TEXT,
-        date TEXT,
-        profit REAL
+    CREATE TABLE IF NOT EXISTS licenses(
+        account TEXT PRIMARY KEY,
+        status TEXT
     )
     """)
 
@@ -56,14 +55,29 @@ def last_month():
 def check():
     raw = request.data.decode("utf-8").strip().replace("\x00","")
 
+    # Parse incoming data (JSON / form / args)
     try:
         data = json.loads(raw)
     except:
         data = request.form.to_dict()
+
     if not data:
         data = request.args.to_dict()
-        acc = str(data.get("account", ""))
-    return jsonify({"status": licenses.get(acc, "blocked")})
+
+    acc = str(data.get("account", ""))
+
+    # 🔥 READ FROM DATABASE (NOT memory)
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+
+    c.execute("SELECT status FROM licenses WHERE account=?", (acc,))
+    row = c.fetchone()
+
+    conn.close()
+
+    status = row[0] if row else "blocked"
+
+    return jsonify({"status": status})
 
 # ================= UPDATE =================
 @app.route("/update", methods=["POST"])
@@ -117,8 +131,13 @@ def set_account():
     acc = request.form.get("account")
     status = request.form.get("status")
 
-    licenses[acc] = status
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
 
+    c.execute("INSERT OR REPLACE INTO licenses(account,status) VALUES(?,?)", (acc, status))
+
+    conn.commit()
+    conn.close()
     return "<a href='/'>Back</a>"
 
 # ================= DASHBOARD =================
@@ -140,7 +159,9 @@ def dashboard():
 
     for acc, balance in data:
 
-        status = licenses.get(acc, "blocked")
+        c.execute("SELECT status FROM licenses WHERE account=?", (acc,))
+        row = c.fetchone()
+        status = row[0] if row else "blocked"
 
         c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND date LIKE ?", (acc, today()+"%"))
         daily = c.fetchone()[0] or 0
