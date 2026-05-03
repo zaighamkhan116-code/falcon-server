@@ -28,13 +28,15 @@ def init_db():
         status TEXT
     )
     """)
-     c.execute("""
+
+    c.execute("""
     CREATE TABLE IF NOT EXISTS profits(
         account TEXT,
         date TEXT,
         profit REAL
     )
     """)
+
     conn.commit()
     conn.close()
 
