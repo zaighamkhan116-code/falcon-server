@@ -55,25 +55,28 @@ def last_month():
 @app.route("/check", methods=["POST"])
 def check():
     raw = request.data.decode("utf-8").strip().replace("\x00","")
-try:
-    data = json.loads(raw)
-except:
-    data = request.form.to_dict()
-    acc = str(data.get("account"))
-    return jsonify({"status": licenses.get(acc,"blocked")})
+
+    try:
+        data = json.loads(raw)
+    except:
+        data = request.form.to_dict()
+
+    acc = str(data.get("account", ""))
+    return jsonify({"status": licenses.get(acc, "blocked")})
 
 # ================= UPDATE =================
 @app.route("/update", methods=["POST"])
 def update():
     raw = request.data.decode("utf-8").strip().replace("\x00","")
-try:
-    data = json.loads(raw)
-except:
-    data = request.form.to_dict()
 
-    acc = str(data["account"])
-    balance = float(data["balance"])
-    equity = float(data["equity"])
+    try:
+        data = json.loads(raw)
+    except:
+        data = request.form.to_dict()
+
+    acc = str(data.get("account", "0"))
+    balance = float(data.get("balance", 0))
+    equity = float(data.get("equity", 0))
 
     conn = sqlite3.connect(DB)
     c = conn.cursor()
@@ -87,17 +90,17 @@ except:
     c.execute("""
     INSERT OR REPLACE INTO clients(account,balance,equity,last_equity,updated)
     VALUES(?,?,?,?,?)
-    """, (acc,balance,equity,equity,datetime.utcnow()))
+    """, (acc, balance, equity, equity, datetime.utcnow()))
 
     c.execute("""
     INSERT INTO profits(account,date,profit)
     VALUES(?,?,?)
-    """,(acc,datetime.utcnow().isoformat(),profit_change))
+    """, (acc, datetime.utcnow().isoformat(), profit_change))
 
     conn.commit()
     conn.close()
 
-    return jsonify({"ok":True})
+    return jsonify({"ok": True})
 
 # ================= ADD ACCOUNT =================
 @app.route("/set", methods=["POST"])
@@ -140,6 +143,10 @@ def dashboard():
         c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND strftime('%Y-%m', date)=?", (acc, last_month()))
         lastm = c.fetchone()[0] or 0
 
+        # ✅ FIXED overall
+        c.execute("SELECT SUM(profit) FROM profits WHERE account=?", (acc,))
+        overall = c.fetchone()[0] or 0
+
         total_daily += daily
         total_weekly += weekly
         total_monthly += monthly
@@ -161,7 +168,6 @@ def dashboard():
         """
 
         i += 1
-
 
     conn.close()
 
@@ -187,7 +193,6 @@ def dashboard():
     table {{ margin:auto; border-collapse:collapse; width:95%; background:white; }}
     th, td {{ border:1px solid black; padding:10px; }}
     th {{ background:#ddd; }}
-
     </style>
     </head>
 
@@ -251,5 +256,4 @@ def dashboard():
 
 # ================= RUN =================
 if __name__ == "__main__":
-    app.run()
-
+    app.run(debug=True)
