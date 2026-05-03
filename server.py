@@ -120,9 +120,9 @@ def dashboard():
 
     for acc, balance in data:
 
-        status = licenses.get(acc, "blocked")
+                     status = licenses.get(acc, "blocked")
 
-               c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND date(date)=?", (acc, today()))
+        c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND date(date)=?", (acc, today()))
         daily = c.fetchone()[0] or 0
 
         c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND strftime('%Y-%W', datetime(date))=?", (acc, week()))
@@ -133,6 +133,7 @@ def dashboard():
 
         c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND strftime('%Y-%m', datetime(date))=?", (acc, last_month()))
         lastm = c.fetchone()[0] or 0
+
         c.execute("SELECT SUM(profit) FROM profits WHERE account=?", (acc,))
         overall = c.fetchone()[0] or 0
 
