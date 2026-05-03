@@ -6,7 +6,7 @@ app = Flask(__name__)
 
 DB = "data.db"
 licenses = {}
-
+SECRET_KEY = "MCdgsp4@"   
 # ================= DATABASE =================
 def init_db():
     conn = sqlite3.connect(DB)
@@ -109,9 +109,16 @@ def update():
 # ================= ADD ACCOUNT =================
 @app.route("/set", methods=["POST"])
 def set_account():
+    key = request.form.get("key")
+
+    if key != SECRET_KEY:
+        return "Unauthorized", 403
+
     acc = request.form.get("account")
     status = request.form.get("status")
+
     licenses[acc] = status
+
     return "<a href='/'>Back</a>"
 
 # ================= DASHBOARD =================
@@ -215,6 +222,7 @@ def dashboard():
         <div class="box">
             <h3>Add / Update Account</h3>
             <form action="/set" method="post">
+            <input type="hidden" name="key" value="MCdgsp4@">
                 Account:<br><input name="account"><br>
                 Status:<br>
                 <select name="status">
