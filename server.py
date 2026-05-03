@@ -122,20 +122,17 @@ def dashboard():
 
         status = licenses.get(acc, "blocked")
 
-        c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND date(date)=?", (acc, today()))
+        c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND date LIKE ?", (acc, today()+"%"))
         daily = c.fetchone()[0] or 0
 
-        c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND strftime('%Y-%W', datetime(date))=?", (acc, week()))
+        c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND strftime('%Y-%W', date)=?", (acc, week()))
         weekly = c.fetchone()[0] or 0
 
-        c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND strftime('%Y-%m', datetime(date))=?", (acc, month()))
+        c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND strftime('%Y-%m', date)=?", (acc, month()))
         monthly = c.fetchone()[0] or 0
 
-        c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND strftime('%Y-%m', datetime(date))=?", (acc, last_month()))
+        c.execute("SELECT SUM(profit) FROM profits WHERE account=? AND strftime('%Y-%m', date)=?", (acc, last_month()))
         lastm = c.fetchone()[0] or 0
-
-        c.execute("SELECT SUM(profit) FROM profits WHERE account=?", (acc,))
-        overall = c.fetchone()[0] or 0
 
         total_daily += daily
         total_weekly += weekly
