@@ -55,7 +55,10 @@ def last_month():
 @app.route("/check", methods=["POST"])
 def check():
     raw = request.data.decode("utf-8").strip().replace("\x00","")
+try:
     data = json.loads(raw)
+except:
+    data = request.form.to_dict()
     acc = str(data.get("account"))
     return jsonify({"status": licenses.get(acc,"blocked")})
 
@@ -63,7 +66,10 @@ def check():
 @app.route("/update", methods=["POST"])
 def update():
     raw = request.data.decode("utf-8").strip().replace("\x00","")
+try:
     data = json.loads(raw)
+except:
+    data = request.form.to_dict()
 
     acc = str(data["account"])
     balance = float(data["balance"])
@@ -86,7 +92,7 @@ def update():
     c.execute("""
     INSERT INTO profits(account,date,profit)
     VALUES(?,?,?)
-    """,(acc,datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),profit_change))
+    """,(acc,datetime.utcnow().isoformat(),profit_change))
 
     conn.commit()
     conn.close()
