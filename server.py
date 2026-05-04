@@ -1,12 +1,13 @@
-from flask import Flask, request, redirect
+from flask import Flask, request, render_template_string, jsonify, redirect
 import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
 
 # ================= DATABASE ================= #
+
 def init_db():
-    conn = sqlite3.connect("clients.db")
+    conn = sqlite3.connect("data.db")
     c = conn.cursor()
 
     c.execute("""
@@ -18,11 +19,11 @@ def init_db():
 
     c.execute("""
     CREATE TABLE IF NOT EXISTS profits (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
         account TEXT,
         balance REAL,
         equity REAL,
-        timestamp TEXT
+        profit REAL,
+        date TEXT
     )
     """)
 
@@ -31,67 +32,40 @@ def init_db():
 
 init_db()
 
-# ================= LICENSE ================= #
-@app.route("/check", methods=["POST"])
-def check():
-    data = request.data.decode().strip()
+# ================= SAVE DATA FROM MT5 ================= #
 
-    try:
-        acc, server, key = data.split("|")
-    except:
-        return "blocked"
-
-    acc = str(int(acc))  # FIX ACCOUNT FORMAT
-
-    conn = sqlite3.connect("clients.db")
-    c = conn.cursor()
-
-    c.execute("SELECT status FROM clients WHERE account=?", (acc,))
-    row = c.fetchone()
-
-    conn.close()
-
-    if row and row[0].strip().lower() == "active":
-        return "active"
-
-    return "blocked"
-
-# ================= DATA RECEIVE ================= #
 @app.route("/update", methods=["POST"])
 def update():
-    import json
-
     try:
-        data = json.loads(request.data.decode())
+        data = request.get_json()
+
+        acc = str(data.get("account"))
+        balance = float(data.get("balance", 0))
+        equity = float(data.get("equity", 0))
+        profit = equity - balance
+
+        conn = sqlite3.connect("data.db")
+        c = conn.cursor()
+
+        c.execute("""
+        INSERT INTO profits (account, balance, equity, profit, date)
+        VALUES (?, ?, ?, ?, ?)
+        """, (acc, balance, equity, profit, datetime.now().strftime("%Y-%m-%d")))
+
+        conn.commit()
+        conn.close()
+
+        return "OK"
     except:
-        return "error"
+        return "ERROR"
 
-    acc = str(int(data.get("account")))
-    balance = float(data.get("balance", 0))
-    equity = float(data.get("equity", 0))
+# ================= LICENSE CHECK ================= #
 
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+@app.route("/check", methods=["POST"])
+def check():
+    acc = request.data.decode("utf-8").strip()
 
-    conn = sqlite3.connect("clients.db")
-    c = conn.cursor()
-
-    c.execute("""
-    INSERT INTO profits (account, balance, equity, timestamp)
-    VALUES (?, ?, ?, ?)
-    """, (acc, balance, equity, now))
-
-    conn.commit()
-    conn.close()
-
-    return "ok"
-
-# ================= STATUS CHECK ================= #
-@app.route("/status", methods=["POST"])
-def status():
-    acc = request.form.get("acc")
-    acc = str(acc)
-
-    conn = sqlite3.connect("clients.db")
+    conn = sqlite3.connect("data.db")
     c = conn.cursor()
 
     c.execute("SELECT status FROM clients WHERE account=?", (acc,))
@@ -100,33 +74,15 @@ def status():
     conn.close()
 
     if row:
-        return f"Status: {row[0]}"
-    return "Account not found"
+        return jsonify({"status": row[0]})
+    return jsonify({"status": "blocked"})
 
-# ================= ADD ACCOUNT ================= #
-@app.route("/add", methods=["POST"])
-def add():
-    acc = request.form.get("acc")
-    acc = str(int(acc))
-    status = request.form.get("status")
 
-    conn = sqlite3.connect("clients.db")
-    c = conn.cursor()
+# ================= DELETE ACCOUNT ================= #
 
-    c.execute("""
-    INSERT OR REPLACE INTO clients (account, status)
-    VALUES (?, ?)
-    """, (acc, status))
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/")
-
-# ================= DELETE ================= #
 @app.route("/delete/<acc>")
 def delete(acc):
-    conn = sqlite3.connect("clients.db")
+    conn = sqlite3.connect("data.db")
     c = conn.cursor()
 
     c.execute("DELETE FROM clients WHERE account=?", (acc,))
@@ -137,162 +93,211 @@ def delete(acc):
 
     return redirect("/")
 
-# ================= DASHBOARD ================= #
-@app.route("/")
-def dashboard():
-    conn = sqlite3.connect("clients.db")
+
+# ================= PANEL ================= #
+
+@app.route("/", methods=["GET", "POST"])
+def panel():
+
+    conn = sqlite3.connect("data.db")
     c = conn.cursor()
 
-    c.execute("SELECT account, status FROM clients")
-    clients = c.fetchall()
+    # ADD / UPDATE ACCOUNT
+    if request.method == "POST":
+        acc = request.form.get("account")
+        status = request.form.get("status")
 
-    rows = ""
-    total_daily = 0
+        if acc:
+            c.execute("""
+            INSERT INTO clients(account, status)
+            VALUES (?, ?)
+            ON CONFLICT(account) DO UPDATE SET status=excluded.status
+            """, (acc, status))
 
-    i = 1
+            conn.commit()
 
-    for acc, status in clients:
+    # GET DATA
+    c.execute("""
+    SELECT c.account, c.status,
+           IFNULL(MAX(p.balance),0),
+           IFNULL(SUM(p.profit),0)
+    FROM clients c
+    LEFT JOIN profits p ON c.account = p.account
+    GROUP BY c.account
+    """)
 
-        c.execute("SELECT balance FROM profits WHERE account=? ORDER BY id DESC LIMIT 1", (acc,))
-        last = c.fetchone()
-        balance = last[0] if last else 0
-
-        today = datetime.now().strftime("%Y-%m-%d")
-        c.execute("""
-        SELECT balance FROM profits 
-        WHERE account=? AND timestamp LIKE ?
-        ORDER BY id ASC LIMIT 1
-        """, (acc, today + "%"))
-        first = c.fetchone()
-
-        daily = 0
-        if first:
-            daily = balance - first[0]
-
-        total_daily += daily
-
-        rows += f"""
-        <tr>
-        <td>{i}</td>
-        <td>{acc}</td>
-        <td>{status}</td>
-        <td>-</td>
-        <td>{round(balance,2)}</td>
-        <td>{round(daily,2)}</td>
-        <td>{round(daily,2)}</td>
-        <td>{round(daily,2)}</td>
-        <td>0</td>
-        <td>{round(daily,2)}</td>
-        <td><a class="del" href="/delete/{acc}">Delete</a></td>
-        </tr>
-        """
-        i += 1
+    data = c.fetchall()
 
     conn.close()
 
-    html = f"""
-    <html>
-    <head>
-    <style>
-    body {{background:#dcd3e6;font-family:Arial;text-align:center;}}
+    # TOTALS
+    total_daily = sum([row[3] for row in data])
+    total_weekly = total_daily
+    total_monthly = total_daily
+    total_overall = total_daily
 
-    h1 {{color:red;}}
-    h2 {{color:#7b2cbf;font-size:40px;font-weight:bold;}}
+    rows_html = ""
+    i = 1
 
-    .container {{width:95%;margin:auto;}}
+    for acc, status, balance, profit in data:
 
-    .card {{
-        background:#2a9db3;
-        padding:20px;
-        margin:20px;
-        display:inline-block;
-        border-radius:10px;
-        width:320px;
-        color:white;
-    }}
+        status_color = "green" if status == "active" else "red"
+        profit_color = "green" if profit >= 0 else "red"
 
-    input,select {{padding:6px;margin:5px;}}
+        rows_html += f"""
+        <tr>
+            <td>{i}</td>
+            <td>{acc}</td>
+            <td style='color:{status_color}; font-weight:bold;'>{status}</td>
+            <td>-</td>
+            <td>{round(balance,2)}</td>
+            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td>0</td>
+            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td><a href="/delete/{acc}" style="background:red;color:white;padding:5px 10px;text-decoration:none;">Delete</a></td>
+        </tr>
+        """
 
-    .box {{
-        display:inline-block;
-        margin:10px;
-        padding:10px;
-        border:1px solid black;
-        width:200px;
-        background:white;
-    }}
+        i += 1
 
-    table {{
-        width:90%;
-        margin:20px auto;
-        border-collapse:collapse;
-    }}
+    return render_template_string(f"""
 
-    td,th {{
-        border:1px solid black;
-        padding:8px;
-    }}
+<html>
+<head>
+<title>Forex Falcon</title>
 
-    .del {{
-        background:red;
-        color:white;
-        padding:5px 10px;
-        text-decoration:none;
-    }}
-    </style>
-    </head>
+<style>
+body {{
+    font-family: Arial;
+    background: #dcd6e0;
+    text-align: center;
+}}
 
-    <body>
-    <div class="container">
+h1 {{
+    color: red;
+}}
 
-    <h1>DASHBOARD</h1>
-    <h2>THE FOREX FALCON</h2>
+h2 {{
+    color: purple;
+    font-size: 40px;
+}}
 
-    <div class="card">
-    <h3>Check Status</h3>
-    <form method="POST" action="/status">
-    <input name="acc" placeholder="Account"><br>
-    <button type="submit">ENTER</button>
-    </form>
-    </div>
+.container {{
+    width: calc(100% - 2in);
+    margin: auto;
+}}
 
-    <div class="card">
-    <h3>Add / Update Account</h3>
-    <form method="POST" action="/add">
-    <input name="acc" placeholder="Account"><br>
-    <select name="status">
-    <option value="active">Active</option>
-    <option value="blocked">Blocked</option>
-    </select><br>
-    <button type="submit">Save</button>
-    </form>
-    </div>
+.box {{
+    display: inline-block;
+    background: #3aa0b3;
+    padding: 20px;
+    margin: 20px;
+    border-radius: 10px;
+}}
 
-    <h3>{datetime.now().strftime("%d %B %Y")}</h3>
+input, select {{
+    padding: 5px;
+    margin: 5px;
+}}
 
-    <div class="box">Total Daily = {round(total_daily,2)}</div>
-    <div class="box">Total Weekly = {round(total_daily,2)}</div>
-    <div class="box">Total Monthly = {round(total_daily,2)}</div>
-    <div class="box">Total Overall = {round(total_daily,2)}</div>
+button {{
+    padding: 5px 10px;
+}}
 
-    <table>
-    <tr>
-    <th>Ser</th><th>Acc ID</th><th>Status</th><th>Hrs</th>
-    <th>Balance($)</th><th>Daily</th><th>Weekly</th>
-    <th>Monthly</th><th>Last Month</th><th>Overall</th><th>Action</th>
-    </tr>
+.summary {{
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}}
 
-    {rows}
+.summary div {{
+    border: 1px solid black;
+    padding: 10px 20px;
+    background: #eee;
+}}
 
-    </table>
+table {{
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}}
 
-    </div>
-    </body>
-    </html>
-    """
+td, th {{
+    border: 1px solid black;
+    padding: 8px;
+}}
 
-    return html
+</style>
+</head>
+
+<body>
+
+<h1>DASHBOARD</h1>
+<h2>THE FOREX FALCON</h2>
+
+<div class="container">
+
+<div class="box">
+<h3>Check Status</h3>
+<form method="POST" action="/check">
+<input name="account" placeholder="Account">
+<br>
+<button>ENTER</button>
+</form>
+</div>
+
+<div class="box">
+<h3>Add / Update Account</h3>
+<form method="POST">
+<input name="account" placeholder="Account" required>
+<br>
+<select name="status">
+<option value="active">Active</option>
+<option value="blocked">Blocked</option>
+</select>
+<br>
+<button>Save</button>
+</form>
+</div>
+
+<h3>{datetime.now().strftime("%d %b %Y")}</h3>
+
+<div class="summary">
+<div>Total Daily = {round(total_daily,2)}</div>
+<div>Total Weekly = {round(total_weekly,2)}</div>
+<div>Total Monthly = {round(total_monthly,2)}</div>
+<div>Total Overall = {round(total_overall,2)}</div>
+</div>
+
+<table>
+<tr>
+<th>Ser</th>
+<th>Acc ID</th>
+<th>Status</th>
+<th>Hrs</th>
+<th>Balance($)</th>
+<th>Daily</th>
+<th>Weekly</th>
+<th>Monthly</th>
+<th>Last Month</th>
+<th>Overall</th>
+<th>Action</th>
+</tr>
+
+{rows_html}
+
+</table>
+
+</div>
+
+</body>
+</html>
+
+""")
 
 # ================= RUN ================= #
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
