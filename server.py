@@ -63,19 +63,26 @@ def last_month():
 def check():
     raw = request.data.decode("utf-8").strip().replace("\x00","")
 
-    # Parse incoming data (JSON / form / args)
-    try:
-        data = json.loads(raw)
-    except:
-        data = request.form.to_dict()
+    acc = ""
 
+# 🔥 FIRST: try JSON (your EA now sends JSON)
+try:
+    data = json.loads(raw)
+    acc = str(data.get("account", ""))
+except:
+    pass
+
+# 🔥 SECOND: fallback to old format
+if not acc and "|" in raw:
+    parts = raw.split("|")
+    acc = parts[0]
+
+# 🔥 THIRD: fallback to form
+if not acc:
+    data = request.form.to_dict()
     if not data:
         data = request.args.to_dict()
-
-    # 🔥 FIX: parse raw string from EA
-    parts = raw.split("|")
-
-    acc = parts[0] if len(parts) > 0 else ""
+    acc = str(data.get("account", ""))
 
     # 🔥 READ FROM DATABASE (NOT memory)
     conn = sqlite3.connect(DB)
