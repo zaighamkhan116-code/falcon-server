@@ -157,7 +157,11 @@ def dashboard():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
 
-    c.execute("SELECT account, balance FROM clients")
+    c.execute("""
+    SELECT l.account, IFNULL(c.balance, 0)
+    FROM licenses l
+    LEFT JOIN clients c ON l.account = c.account
+    """)
     data = c.fetchall()
 
     rows_html = ""
