@@ -50,7 +50,7 @@ data = request.get_json()
     conn = sqlite3.connect("data.db")
     c = conn.cursor()
 
-    # 🔥 FIX DUPLICATION (KEEP ONLY LATEST)
+    # FIX: remove old record (no duplication)
     c.execute("DELETE FROM profits WHERE account=?", (acc,))
 
     c.execute("""
@@ -67,7 +67,7 @@ except Exception as e:
     return "ERROR"
 ```
 
-# ================= LICENSE CHECK (FIXED) =================
+# ================= LICENSE CHECK =================
 
 @app.route("/check", methods=["POST"])
 def check():
@@ -134,7 +134,7 @@ if request.method == "POST":
 
         conn.commit()
 
-# 🔥 FIX DATA FETCH (NO DUPLICATE ISSUE)
+# FETCH DATA (FIXED NO DUPLICATION)
 c.execute("""
 SELECT c.account, c.status,
        IFNULL(p.balance,0),
@@ -144,10 +144,9 @@ LEFT JOIN profits p ON c.account = p.account
 """)
 
 data = c.fetchall()
-
 conn.close()
 
-# TOTALS (UNCHANGED LOGIC)
+# TOTALS
 total_daily = sum([row[3] for row in data])
 total_weekly = total_daily
 total_monthly = total_daily
@@ -181,7 +180,6 @@ for acc, status, balance, profit in data:
         </td>
     </tr>
     """
-
     i += 1
 
 return render_template_string(f"""
