@@ -265,8 +265,8 @@ def dashboard():
 
             Status:<br>
             <select name="status">
-              <option value="active" {"selected" if status=="active" else ""}>Active</option>
-              <option value="blocked" {"selected" if status=="blocked" else ""}>Blocked</option>
+             <option value="active">Active</option>
+             <option value="blocked">Blocked</option>
             </select>
 
             <button type="submit">Save</button>
