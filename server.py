@@ -41,6 +41,8 @@ def check():
     except:
         return "blocked"
 
+    acc = str(int(acc))  # FIX ACCOUNT FORMAT
+
     conn = sqlite3.connect("clients.db")
     c = conn.cursor()
 
@@ -49,8 +51,9 @@ def check():
 
     conn.close()
 
-    if row and row[0] == "active":
+    if row and row[0].strip().lower() == "active":
         return "active"
+
     return "blocked"
 
 # ================= DATA RECEIVE ================= #
@@ -63,7 +66,7 @@ def update():
     except:
         return "error"
 
-    acc = str(data.get("account"))
+    acc = str(int(data.get("account")))
     balance = float(data.get("balance", 0))
     equity = float(data.get("equity", 0))
 
@@ -82,10 +85,29 @@ def update():
 
     return "ok"
 
+# ================= STATUS CHECK ================= #
+@app.route("/status", methods=["POST"])
+def status():
+    acc = request.form.get("acc")
+    acc = str(acc)
+
+    conn = sqlite3.connect("clients.db")
+    c = conn.cursor()
+
+    c.execute("SELECT status FROM clients WHERE account=?", (acc,))
+    row = c.fetchone()
+
+    conn.close()
+
+    if row:
+        return f"Status: {row[0]}"
+    return "Account not found"
+
 # ================= ADD ACCOUNT ================= #
 @app.route("/add", methods=["POST"])
 def add():
     acc = request.form.get("acc")
+    acc = str(int(acc))
     status = request.form.get("status")
 
     conn = sqlite3.connect("clients.db")
@@ -131,18 +153,13 @@ def dashboard():
 
     for acc, status in clients:
 
-        # LAST BALANCE
-        c.execute("""
-        SELECT balance FROM profits
-        WHERE account=? ORDER BY id DESC LIMIT 1
-        """, (acc,))
+        c.execute("SELECT balance FROM profits WHERE account=? ORDER BY id DESC LIMIT 1", (acc,))
         last = c.fetchone()
         balance = last[0] if last else 0
 
-        # FIRST TODAY
         today = datetime.now().strftime("%Y-%m-%d")
         c.execute("""
-        SELECT balance FROM profits
+        SELECT balance FROM profits 
         WHERE account=? AND timestamp LIKE ?
         ORDER BY id ASC LIMIT 1
         """, (acc, today + "%"))
@@ -169,7 +186,6 @@ def dashboard():
         <td><a class="del" href="/delete/{acc}">Delete</a></td>
         </tr>
         """
-
         i += 1
 
     conn.close()
@@ -181,7 +197,9 @@ def dashboard():
     body {{background:#dcd3e6;font-family:Arial;text-align:center;}}
 
     h1 {{color:red;}}
-    h2 {{color:#7b2cbf;}}
+    h2 {{color:#7b2cbf;font-size:40px;font-weight:bold;}}
+
+    .container {{width:95%;margin:auto;}}
 
     .card {{
         background:#2a9db3;
@@ -189,42 +207,53 @@ def dashboard():
         margin:20px;
         display:inline-block;
         border-radius:10px;
-        width:300px;
+        width:320px;
         color:white;
     }}
 
-    input,select {{padding:5px;margin:5px;}}
+    input,select {{padding:6px;margin:5px;}}
 
     .box {{
         display:inline-block;
         margin:10px;
         padding:10px;
         border:1px solid black;
-        width:180px;
+        width:200px;
         background:white;
     }}
 
-    table {{margin:auto;border-collapse:collapse;}}
-    td,th {{border:1px solid black;padding:8px;}}
+    table {{
+        width:90%;
+        margin:20px auto;
+        border-collapse:collapse;
+    }}
+
+    td,th {{
+        border:1px solid black;
+        padding:8px;
+    }}
 
     .del {{
         background:red;
         color:white;
-        padding:4px 8px;
+        padding:5px 10px;
         text-decoration:none;
     }}
     </style>
     </head>
 
     <body>
+    <div class="container">
 
     <h1>DASHBOARD</h1>
     <h2>THE FOREX FALCON</h2>
 
     <div class="card">
     <h3>Check Status</h3>
-    <input placeholder="Account"><br>
-    <button>ENTER</button>
+    <form method="POST" action="/status">
+    <input name="acc" placeholder="Account"><br>
+    <button type="submit">ENTER</button>
+    </form>
     </div>
 
     <div class="card">
@@ -257,6 +286,7 @@ def dashboard():
 
     </table>
 
+    </div>
     </body>
     </html>
     """
