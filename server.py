@@ -65,21 +65,21 @@ def check():
 
     acc = ""
 
-# 🔥 FIRST: try JSON (your EA now sends JSON)
-try:
-    data = json.loads(raw)
-    acc = str(data.get("account", ""))
-except:
-    pass
+  # 🔥 FIRST: try JSON (your EA now sends JSON)
+    try:
+        data = json.loads(raw)
+        acc = str(data.get("account", ""))
+    except:
+        pass 
 
-# 🔥 SECOND: fallback to old format
-if not acc and "|" in raw:
-    parts = raw.split("|")
-    acc = parts[0]
+  # 🔥 SECOND: fallback to old format
+    if not acc and "|" in raw:
+        parts = raw.split("|")
+        acc = parts[0]
 
-# 🔥 THIRD: fallback to form
-if not acc:
-    data = request.form.to_dict()
+  # 🔥 THIRD: fallback to form
+    if not acc:
+        data = request.form.to_dict()
     if not data:
         data = request.args.to_dict()
     acc = str(data.get("account", ""))
