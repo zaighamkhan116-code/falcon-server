@@ -2,189 +2,177 @@ from flask import Flask, request, render_template_string, jsonify, redirect
 import sqlite3
 from datetime import datetime
 
-app = Flask(**name**)
+app = Flask(__name__)
 
 # ================= DATABASE =================
 
 def init_db():
-conn = sqlite3.connect("data.db")
-c = conn.cursor()
-
-```
-c.execute("""
-CREATE TABLE IF NOT EXISTS clients (
-    account TEXT PRIMARY KEY,
-    status TEXT
-)
-""")
-
-c.execute("""
-CREATE TABLE IF NOT EXISTS profits (
-    account TEXT,
-    balance REAL,
-    equity REAL,
-    profit REAL,
-    date TEXT
-)
-""")
-
-conn.commit()
-conn.close()
-```
-
-init_db()
-
-# ================= UPDATE =================
-
-@app.route("/update", methods=["POST"])
-def update():
-try:
-data = request.get_json()
-
-```
-    acc = str(data.get("account"))
-    balance = float(data.get("balance", 0))
-    equity = float(data.get("equity", 0))
-    profit = equity - balance
-
     conn = sqlite3.connect("data.db")
     c = conn.cursor()
 
-    # FIX: remove old record (no duplication)
-    c.execute("DELETE FROM profits WHERE account=?", (acc,))
+    c.execute("""
+    CREATE TABLE IF NOT EXISTS clients (
+        account TEXT PRIMARY KEY,
+        status TEXT
+    )
+    """)
 
     c.execute("""
-    INSERT INTO profits (account, balance, equity, profit, date)
-    VALUES (?, ?, ?, ?, ?)
-    """, (acc, balance, equity, profit, datetime.now().strftime("%Y-%m-%d")))
+    CREATE TABLE IF NOT EXISTS profits (
+        account TEXT PRIMARY KEY,
+        balance REAL,
+        equity REAL,
+        profit REAL,
+        date TEXT
+    )
+    """)
 
     conn.commit()
     conn.close()
 
-    return "OK"
-except Exception as e:
-    print("UPDATE ERROR:", e)
-    return "ERROR"
-```
+init_db()
+
+# ================= UPDATE (MT5 DATA) =================
+
+@app.route("/update", methods=["POST"])
+def update():
+    try:
+        data = request.get_json()
+
+        acc = str(data.get("account"))
+        balance = float(data.get("balance", 0))
+        equity = float(data.get("equity", 0))
+        profit = equity - balance
+
+        conn = sqlite3.connect("data.db")
+        c = conn.cursor()
+
+        # ✅ NO DUPLICATION (replace old)
+        c.execute("""
+        INSERT OR REPLACE INTO profits (account, balance, equity, profit, date)
+        VALUES (?, ?, ?, ?, ?)
+        """, (acc, balance, equity, profit, datetime.now().strftime("%Y-%m-%d")))
+
+        conn.commit()
+        conn.close()
+
+        return "OK"
+
+    except Exception as e:
+        print("UPDATE ERROR:", e)
+        return "ERROR"
 
 # ================= LICENSE CHECK =================
 
 @app.route("/check", methods=["POST"])
 def check():
-try:
-data = request.get_json()
+    try:
+        data = request.get_json()
+        acc = str(data.get("account"))
 
-```
-    acc = str(data.get("account"))
+        conn = sqlite3.connect("data.db")
+        c = conn.cursor()
 
-    conn = sqlite3.connect("data.db")
-    c = conn.cursor()
+        c.execute("SELECT status FROM clients WHERE account=?", (acc,))
+        row = c.fetchone()
 
-    c.execute("SELECT status FROM clients WHERE account=?", (acc,))
-    row = c.fetchone()
+        conn.close()
 
-    conn.close()
+        # ✅ IMPORTANT FIX: default ACTIVE if not found
+        if row:
+            return jsonify({"status": row[0]})
 
-    if row:
-        return jsonify({"status": row[0]})
+        return jsonify({"status": "active"})
 
-    return jsonify({"status": "blocked"})
-except Exception as e:
-    print("CHECK ERROR:", e)
-    return jsonify({"status": "blocked"})
-```
+    except Exception as e:
+        print("CHECK ERROR:", e)
+        return jsonify({"status": "active"})
 
 # ================= DELETE =================
 
 @app.route("/delete/<acc>")
 def delete(acc):
-conn = sqlite3.connect("data.db")
-c = conn.cursor()
+    conn = sqlite3.connect("data.db")
+    c = conn.cursor()
 
-```
-c.execute("DELETE FROM clients WHERE account=?", (acc,))
-c.execute("DELETE FROM profits WHERE account=?", (acc,))
+    c.execute("DELETE FROM clients WHERE account=?", (acc,))
+    c.execute("DELETE FROM profits WHERE account=?", (acc,))
 
-conn.commit()
-conn.close()
+    conn.commit()
+    conn.close()
 
-return redirect("/")
-```
+    return redirect("/")
 
 # ================= PANEL =================
 
 @app.route("/", methods=["GET", "POST"])
 def panel():
 
-```
-conn = sqlite3.connect("data.db")
-c = conn.cursor()
+    conn = sqlite3.connect("data.db")
+    c = conn.cursor()
 
-# ADD / UPDATE ACCOUNT
-if request.method == "POST":
-    acc = request.form.get("account")
-    status = request.form.get("status")
+    # ADD / UPDATE ACCOUNT
+    if request.method == "POST":
+        acc = request.form.get("account")
+        status = request.form.get("status")
 
-    if acc:
-        c.execute("""
-        INSERT INTO clients(account, status)
-        VALUES (?, ?)
-        ON CONFLICT(account) DO UPDATE SET status=excluded.status
-        """, (acc, status))
+        if acc:
+            c.execute("""
+            INSERT INTO clients(account, status)
+            VALUES (?, ?)
+            ON CONFLICT(account) DO UPDATE SET status=excluded.status
+            """, (acc, status))
+            conn.commit()
 
-        conn.commit()
+    # FETCH DATA (NO DUPLICATION)
+    c.execute("""
+    SELECT c.account, c.status,
+           IFNULL(p.balance,0),
+           IFNULL(p.profit,0)
+    FROM clients c
+    LEFT JOIN profits p ON c.account = p.account
+    """)
 
-# FETCH DATA (FIXED NO DUPLICATION)
-c.execute("""
-SELECT c.account, c.status,
-       IFNULL(p.balance,0),
-       IFNULL(p.profit,0)
-FROM clients c
-LEFT JOIN profits p ON c.account = p.account
-""")
+    data = c.fetchall()
+    conn.close()
 
-data = c.fetchall()
-conn.close()
+    # TOTALS
+    total_daily = sum([row[3] for row in data])
+    total_weekly = total_daily
+    total_monthly = total_daily
+    total_overall = total_daily
 
-# TOTALS
-total_daily = sum([row[3] for row in data])
-total_weekly = total_daily
-total_monthly = total_daily
-total_overall = total_daily
+    rows_html = ""
+    i = 1
 
-rows_html = ""
-i = 1
+    for acc, status, balance, profit in data:
 
-for acc, status, balance, profit in data:
+        status_color = "green" if status == "active" else "red"
+        profit_color = "green" if profit >= 0 else "red"
 
-    status_color = "green" if status == "active" else "red"
-    profit_color = "green" if profit >= 0 else "red"
+        rows_html += f"""
+        <tr>
+            <td>{i}</td>
+            <td>{acc}</td>
+            <td style='color:{status_color}; font-weight:bold;'>{status}</td>
+            <td>-</td>
+            <td>{round(balance,2)}</td>
+            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td>0</td>
+            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td>
+                <a href="/delete/{acc}" 
+                style="background:red;color:white;padding:5px 10px;text-decoration:none;">
+                Delete
+                </a>
+            </td>
+        </tr>
+        """
+        i += 1
 
-    rows_html += f"""
-    <tr>
-        <td>{i}</td>
-        <td>{acc}</td>
-        <td style='color:{status_color}; font-weight:bold;'>{status}</td>
-        <td>-</td>
-        <td>{round(balance,2)}</td>
-        <td style='color:{profit_color}'>{round(profit,2)}</td>
-        <td style='color:{profit_color}'>{round(profit,2)}</td>
-        <td style='color:{profit_color}'>{round(profit,2)}</td>
-        <td>0</td>
-        <td style='color:{profit_color}'>{round(profit,2)}</td>
-        <td>
-            <a href="/delete/{acc}" 
-            style="background:red;color:white;padding:5px 10px;text-decoration:none;">
-            Delete
-            </a>
-        </td>
-    </tr>
-    """
-    i += 1
-
-return render_template_string(f"""
-```
-
+    return render_template_string(f"""
 <html>
 <head>
 <title>Forex Falcon</title>
@@ -202,7 +190,7 @@ h1 {{
 
 h2 {{
     color: purple;
-    font-size: 40px;
+    font-size: 50px;
 }}
 
 .container {{
@@ -315,10 +303,9 @@ td, th {{
 
 </body>
 </html>
-
 """)
 
 # ================= RUN =================
 
-if **name** == "**main**":
-app.run(host="0.0.0.0", port=8080)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
