@@ -37,7 +37,11 @@ init_db()
 @app.route("/update", methods=["POST"])
 def update():
     try:
-        data = request.get_json()
+        # ✅ FIX: force JSON read
+        data = request.get_json(force=True)
+
+        if not data:
+            return "No JSON", 400
 
         acc = str(data.get("account"))
         balance = float(data.get("balance", 0))
@@ -47,7 +51,6 @@ def update():
         conn = sqlite3.connect("data.db")
         c = conn.cursor()
 
-        # ✅ NO DUPLICATION (replace old)
         c.execute("""
         INSERT OR REPLACE INTO profits (account, balance, equity, profit, date)
         VALUES (?, ?, ?, ?, ?)
@@ -56,18 +59,25 @@ def update():
         conn.commit()
         conn.close()
 
+        print("UPDATE OK:", acc, balance, equity)
+
         return "OK"
 
     except Exception as e:
         print("UPDATE ERROR:", e)
-        return "ERROR"
+        return "ERROR", 500
 
 # ================= LICENSE CHECK =================
 
 @app.route("/check", methods=["POST"])
 def check():
     try:
-        data = request.get_json()
+        # ✅ FIX: force JSON read
+        data = request.get_json(force=True)
+
+        if not data:
+            return jsonify({"status": "active"})
+
         acc = str(data.get("account"))
 
         conn = sqlite3.connect("data.db")
@@ -78,7 +88,6 @@ def check():
 
         conn.close()
 
-        # ✅ IMPORTANT FIX: default ACTIVE if not found
         if row:
             return jsonify({"status": row[0]})
 
@@ -111,7 +120,6 @@ def panel():
     conn = sqlite3.connect("data.db")
     c = conn.cursor()
 
-    # ADD / UPDATE ACCOUNT
     if request.method == "POST":
         acc = request.form.get("account")
         status = request.form.get("status")
@@ -124,7 +132,6 @@ def panel():
             """, (acc, status))
             conn.commit()
 
-    # FETCH DATA (NO DUPLICATION)
     c.execute("""
     SELECT c.account, c.status,
            IFNULL(p.balance,0),
@@ -136,7 +143,6 @@ def panel():
     data = c.fetchall()
     conn.close()
 
-    # TOTALS
     total_daily = sum([row[3] for row in data])
     total_weekly = total_daily
     total_monthly = total_daily
