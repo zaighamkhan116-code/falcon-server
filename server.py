@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template_string, redirect
+from flask import Flask, request, redirect
 import sqlite3
 from datetime import datetime
 
@@ -9,7 +9,6 @@ def init_db():
     conn = sqlite3.connect("clients.db")
     c = conn.cursor()
 
-    # UNIQUE account (no duplicates)
     c.execute("""
     CREATE TABLE IF NOT EXISTS clients (
         account TEXT PRIMARY KEY,
@@ -32,7 +31,7 @@ def init_db():
 
 init_db()
 
-# ================= LICENSE CHECK ================= #
+# ================= LICENSE ================= #
 @app.route("/check", methods=["POST"])
 def check():
     data = request.data.decode().strip()
@@ -52,30 +51,27 @@ def check():
 
     if row and row[0] == "active":
         return "active"
-    else:
-        return "blocked"
+    return "blocked"
 
 # ================= DATA RECEIVE ================= #
 @app.route("/update", methods=["POST"])
 def update():
-    raw = request.data.decode("utf-8")
-
     import json
+
     try:
-        data = json.loads(raw)
+        data = json.loads(request.data.decode())
     except:
         return "error"
 
-    acc = data.get("account")
-    balance = data.get("balance")
-    equity = data.get("equity")
+    acc = str(data.get("account"))
+    balance = float(data.get("balance", 0))
+    equity = float(data.get("equity", 0))
 
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     conn = sqlite3.connect("clients.db")
     c = conn.cursor()
 
-    # INSERT DATA
     c.execute("""
     INSERT INTO profits (account, balance, equity, timestamp)
     VALUES (?, ?, ?, ?)
@@ -86,7 +82,26 @@ def update():
 
     return "ok"
 
-# ================= DELETE ACCOUNT ================= #
+# ================= ADD ACCOUNT ================= #
+@app.route("/add", methods=["POST"])
+def add():
+    acc = request.form.get("acc")
+    status = request.form.get("status")
+
+    conn = sqlite3.connect("clients.db")
+    c = conn.cursor()
+
+    c.execute("""
+    INSERT OR REPLACE INTO clients (account, status)
+    VALUES (?, ?)
+    """, (acc, status))
+
+    conn.commit()
+    conn.close()
+
+    return redirect("/")
+
+# ================= DELETE ================= #
 @app.route("/delete/<acc>")
 def delete(acc):
     conn = sqlite3.connect("clients.db")
@@ -109,7 +124,7 @@ def dashboard():
     c.execute("SELECT account, status FROM clients")
     clients = c.fetchall()
 
-    rows_html = ""
+    rows = ""
     total_daily = 0
 
     i = 1
@@ -118,7 +133,7 @@ def dashboard():
 
         # LAST BALANCE
         c.execute("""
-        SELECT balance FROM profits 
+        SELECT balance FROM profits
         WHERE account=? ORDER BY id DESC LIMIT 1
         """, (acc,))
         last = c.fetchone()
@@ -127,31 +142,31 @@ def dashboard():
         # FIRST TODAY
         today = datetime.now().strftime("%Y-%m-%d")
         c.execute("""
-        SELECT balance FROM profits 
+        SELECT balance FROM profits
         WHERE account=? AND timestamp LIKE ?
         ORDER BY id ASC LIMIT 1
         """, (acc, today + "%"))
-        first_today = c.fetchone()
+        first = c.fetchone()
 
         daily = 0
-        if first_today:
-            daily = balance - first_today[0]
+        if first:
+            daily = balance - first[0]
 
         total_daily += daily
 
-        rows_html += f"""
+        rows += f"""
         <tr>
-            <td>{i}</td>
-            <td>{acc}</td>
-            <td>{status}</td>
-            <td>-</td>
-            <td>{round(balance,2)}</td>
-            <td>{round(daily,2)}</td>
-            <td>{round(daily,2)}</td>
-            <td>{round(daily,2)}</td>
-            <td>0</td>
-            <td>{round(daily,2)}</td>
-            <td><a href="/delete/{acc}" style="color:red;">Delete</a></td>
+        <td>{i}</td>
+        <td>{acc}</td>
+        <td>{status}</td>
+        <td>-</td>
+        <td>{round(balance,2)}</td>
+        <td>{round(daily,2)}</td>
+        <td>{round(daily,2)}</td>
+        <td>{round(daily,2)}</td>
+        <td>0</td>
+        <td>{round(daily,2)}</td>
+        <td><a class="del" href="/delete/{acc}">Delete</a></td>
         </tr>
         """
 
@@ -161,31 +176,84 @@ def dashboard():
 
     html = f"""
     <html>
-    <body style="font-family:Arial; text-align:center;">
+    <head>
+    <style>
+    body {{background:#dcd3e6;font-family:Arial;text-align:center;}}
+
+    h1 {{color:red;}}
+    h2 {{color:#7b2cbf;}}
+
+    .card {{
+        background:#2a9db3;
+        padding:20px;
+        margin:20px;
+        display:inline-block;
+        border-radius:10px;
+        width:300px;
+        color:white;
+    }}
+
+    input,select {{padding:5px;margin:5px;}}
+
+    .box {{
+        display:inline-block;
+        margin:10px;
+        padding:10px;
+        border:1px solid black;
+        width:180px;
+        background:white;
+    }}
+
+    table {{margin:auto;border-collapse:collapse;}}
+    td,th {{border:1px solid black;padding:8px;}}
+
+    .del {{
+        background:red;
+        color:white;
+        padding:4px 8px;
+        text-decoration:none;
+    }}
+    </style>
+    </head>
+
+    <body>
 
     <h1>DASHBOARD</h1>
     <h2>THE FOREX FALCON</h2>
 
+    <div class="card">
+    <h3>Check Status</h3>
+    <input placeholder="Account"><br>
+    <button>ENTER</button>
+    </div>
+
+    <div class="card">
+    <h3>Add / Update Account</h3>
     <form method="POST" action="/add">
-        Account: <input name="acc">
-        Status:
-        <select name="status">
-            <option value="active">Active</option>
-            <option value="blocked">Blocked</option>
-        </select>
-        <button type="submit">Save</button>
+    <input name="acc" placeholder="Account"><br>
+    <select name="status">
+    <option value="active">Active</option>
+    <option value="blocked">Blocked</option>
+    </select><br>
+    <button type="submit">Save</button>
     </form>
+    </div>
 
-    <h3>Total Daily = {round(total_daily,2)}</h3>
+    <h3>{datetime.now().strftime("%d %B %Y")}</h3>
 
-    <table border="1" style="margin:auto;">
+    <div class="box">Total Daily = {round(total_daily,2)}</div>
+    <div class="box">Total Weekly = {round(total_daily,2)}</div>
+    <div class="box">Total Monthly = {round(total_daily,2)}</div>
+    <div class="box">Total Overall = {round(total_daily,2)}</div>
+
+    <table>
     <tr>
     <th>Ser</th><th>Acc ID</th><th>Status</th><th>Hrs</th>
-    <th>Balance</th><th>Daily</th><th>Weekly</th>
+    <th>Balance($)</th><th>Daily</th><th>Weekly</th>
     <th>Monthly</th><th>Last Month</th><th>Overall</th><th>Action</th>
     </tr>
 
-    {rows_html}
+    {rows}
 
     </table>
 
@@ -194,25 +262,6 @@ def dashboard():
     """
 
     return html
-
-# ================= ADD ACCOUNT ================= #
-@app.route("/add", methods=["POST"])
-def add():
-    acc = request.form.get("acc")
-    status = request.form.get("status")
-
-    conn = sqlite3.connect("clients.db")
-    c = conn.cursor()
-
-    c.execute("""
-    INSERT OR REPLACE INTO clients (account, status)
-    VALUES (?, ?)
-    """, (acc, status))
-
-    conn.commit()
-    conn.close()
-
-    return redirect("/")
 
 # ================= RUN ================= #
 if __name__ == "__main__":
