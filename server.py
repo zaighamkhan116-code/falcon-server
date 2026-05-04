@@ -72,7 +72,10 @@ def check():
     if not data:
         data = request.args.to_dict()
 
-    acc = str(data.get("account", ""))
+    # 🔥 FIX: parse raw string from EA
+    parts = raw.split("|")
+
+    acc = parts[0] if len(parts) > 0 else ""
 
     # 🔥 READ FROM DATABASE (NOT memory)
     conn = sqlite3.connect(DB)
