@@ -138,9 +138,10 @@ def delete(acc):
     return redirect("/")
 
 # ================= PANEL =================
-
 @app.route("/", methods=["GET", "POST"])
 def panel():
+
+
 conn = sqlite3.connect("data.db")
 c = conn.cursor()
 
@@ -201,15 +202,13 @@ for acc, status, balance, profit in data:
         <td>0</td>
         <td style='color:{profit_color}'>{round(profit,2)}</td>
         <td>
-            <a href="/delete/{acc}"
-               style="background:red;color:white;padding:5px 10px;text-decoration:none;">
-               Delete
+            <a href="/delete/{acc}">
+                Delete
             </a>
         </td>
     </tr>
     """
     i += 1
-
 
 
     return render_template_string(f"""
