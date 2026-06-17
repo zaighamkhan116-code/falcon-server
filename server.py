@@ -32,7 +32,7 @@ def init_db():
 
 init_db()
 
-# ================= UPDATE (MT5 DATA) =================
+
 # ================= UPDATE (MT5 DATA) =================
 
 @app.route("/update", methods=["POST"])
@@ -49,7 +49,9 @@ def update():
 
         data = json.loads(raw)
 
-        acc = str(data.get("account"))
+        acc = str(data.get("account")).strip()
+
+        print("ACCOUNT RECEIVED =", repr(acc))
         balance = float(data.get("balance", 0))
         equity = float(data.get("equity", 0))
         profit = equity - balance
