@@ -94,10 +94,15 @@ def check():
     try:
         print("RAW CHECK DATA =", request.data)
 
-        data = request.get_json(silent=True)
+        import json
+
+        raw = request.data.decode("utf-8").rstrip("\x00")
+
+        print("RAW =", raw)
+
+        data = json.loads(raw)
+
         print("JSON DATA =", data)
-        if not data:
-            return jsonify({"status": "blocked"})
 
         acc = str(data.get("account")).strip()
 
