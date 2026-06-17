@@ -155,17 +155,19 @@ def panel():
             """, (acc, status))
             conn.commit()
 
-    c.execute("""
-    SELECT c.account, c.status,
-           IFNULL(p.balance,0),
-           IFNULL(p.profit,0)
-    FROM clients c
-    LEFT JOIN profits p ON c.account = p.account
-    """)
+        c.execute("""
+        SELECT c.account, c.status,
+               IFNULL(p.balance,0),
+               IFNULL(p.profit,0)
+        FROM clients c
+        LEFT JOIN profits p ON c.account = p.account
+        """)
 
-    data = c.fetchall()
-    print("PANEL DATA =", data)
-    conn.close()
+        data = c.fetchall()
+
+print("PANEL DATA =", data)
+
+conn.close()
 
     total_daily = sum([row[3] for row in data])
     total_weekly = total_daily
