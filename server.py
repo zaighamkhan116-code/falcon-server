@@ -142,12 +142,14 @@ def delete(acc):
 @app.route("/", methods=["GET", "POST"])
 def panel():
 
-    conn = sqlite3.connect("data.db")
-    c = conn.cursor()
+```
+conn = sqlite3.connect("data.db")
+c = conn.cursor()
 
-    if request.method == "POST":
-    acc = request.form.get("account")
-    status = request.form.get("status")
+if request.method == "POST":
+
+    acc = request.form.get("account", "").strip()
+    status = request.form.get("status", "active")
 
     if acc:
         c.execute("""
@@ -155,61 +157,62 @@ def panel():
         VALUES (?, ?)
         ON CONFLICT(account) DO UPDATE SET status=excluded.status
         """, (acc, status))
+
         conn.commit()
 
-    # ALWAYS LOAD DATA
-        c.execute("""
-        SELECT c.account, c.status,
-        IFNULL(p.balance,0),
-        IFNULL(p.profit,0)
-    FROM clients c
-    LEFT JOIN profits p ON c.account = p.account
-    """)
+# ALWAYS LOAD DATA
+c.execute("""
+SELECT c.account,
+       c.status,
+       IFNULL(p.balance,0),
+       IFNULL(p.profit,0)
+FROM clients c
+LEFT JOIN profits p
+       ON c.account = p.account
+""")
 
-    data = c.fetchall()
+data = c.fetchall()
 
-    print("PANEL DATA =", data)
+print("PANEL DATA =", data)
 
-    conn.close()
+conn.close()
 
-    print("PANEL DATA =", data)
+total_daily = sum(row[3] for row in data)
+total_weekly = total_daily
+total_monthly = total_daily
+total_overall = total_daily
 
-    conn.close()
+rows_html = ""
+i = 1
 
-    total_daily = sum([row[3] for row in data])
-    total_weekly = total_daily
-    total_monthly = total_daily
-    total_overall = total_daily
+for acc, status, balance, profit in data:
 
-    rows_html = ""
-    i = 1
+    status_color = "green" if status == "active" else "red"
+    profit_color = "green" if profit >= 0 else "red"
 
-    for acc, status, balance, profit in data:
+    rows_html += f"""
+    <tr>
+        <td>{i}</td>
+        <td>{acc}</td>
+        <td style='color:{status_color};font-weight:bold;'>{status}</td>
+        <td>-</td>
+        <td>{round(balance,2)}</td>
+        <td style='color:{profit_color}'>{round(profit,2)}</td>
+        <td style='color:{profit_color}'>{round(profit,2)}</td>
+        <td style='color:{profit_color}'>{round(profit,2)}</td>
+        <td>0</td>
+        <td style='color:{profit_color}'>{round(profit,2)}</td>
+        <td>
+            <a href="/delete/{acc}"
+               style="background:red;color:white;padding:5px 10px;text-decoration:none;">
+               Delete
+            </a>
+        </td>
+    </tr>
+    """
+    i += 1
 
-        status_color = "green" if status == "active" else "red"
-        profit_color = "green" if profit >= 0 else "red"
 
-        rows_html += f"""
-        <tr>
-            <td>{i}</td>
-            <td>{acc}</td>
-            <td style='color:{status_color}; font-weight:bold;'>{status}</td>
-            <td>-</td>
-            <td>{round(balance,2)}</td>
-            <td style='color:{profit_color}'>{round(profit,2)}</td>
-            <td style='color:{profit_color}'>{round(profit,2)}</td>
-            <td style='color:{profit_color}'>{round(profit,2)}</td>
-            <td>0</td>
-            <td style='color:{profit_color}'>{round(profit,2)}</td>
-            <td>
-                <a href="/delete/{acc}" 
-                style="background:red;color:white;padding:5px 10px;text-decoration:none;">
-                Delete
-                </a>
-            </td>
-        </tr>
-        """
-        i += 1
 
     return render_template_string(f"""
 <html>
