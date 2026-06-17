@@ -36,7 +36,7 @@ init_db()
 @app.route("/update", methods=["POST"])
 def update():
     try:
-
+        print("UPDATE ROUTE HIT V2")
         print("RAW DATA =", request.data)
 
         data = request.get_json(silent=True)
