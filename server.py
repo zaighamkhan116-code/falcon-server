@@ -164,6 +164,7 @@ def panel():
     """)
 
     data = c.fetchall()
+    print("PANEL DATA =", data)
     conn.close()
 
     total_daily = sum([row[3] for row in data])
