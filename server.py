@@ -49,7 +49,7 @@ def update():
 
         data = json.loads(raw)
 
-        acc = str(data.get("account"))
+        acc = str(data.get("account")).strip()
 
         print("ACCOUNT RECEIVED =", repr(acc))
         balance = float(data.get("balance", 0))
@@ -98,7 +98,7 @@ def check():
         if not data:
             return jsonify({"status": "blocked"})
 
-        acc = str(data.get("acc = str(data.get("account"))
+        acc = str(data.get("account"))
 
         conn = sqlite3.connect("data.db")
         c = conn.cursor()
