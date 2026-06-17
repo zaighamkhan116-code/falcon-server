@@ -92,8 +92,10 @@ def update():
 @app.route("/check", methods=["POST"])
 def check():
     try:
-        data = request.get_json(force=True)
+        print("RAW CHECK DATA =", request.data)
 
+        data = request.get_json(silent=True)
+        print("JSON DATA =", data)
         if not data:
             return jsonify({"status": "blocked"})
 
