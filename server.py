@@ -98,7 +98,7 @@ def check():
         if not data:
             return jsonify({"status": "blocked"})
 
-        acc = str(data.get("acc = str(data.get("account")).strip()"))
+        acc = str(data.get("acc = str(data.get("account"))
 
         conn = sqlite3.connect("data.db")
         c = conn.cursor()
