@@ -33,26 +33,25 @@ def init_db():
 init_db()
 
 # ================= UPDATE (MT5 DATA) =================
+# ================= UPDATE (MT5 DATA) =================
+
 @app.route("/update", methods=["POST"])
 def update():
     try:
-        print("UPDATE ROUTE HIT V2")
-        print("RAW DATA =", request.data)
 
         import json
 
+        print("RAW DATA =", request.data)
+
         raw = request.data.decode("utf-8").rstrip("\x00")
 
-        data = json.loads(raw)
+        print("RAW =", raw)
 
-        if data is None:
-            print("NO JSON RECEIVED")
-            return "OK"
+        data = json.loads(raw)
 
         acc = str(data.get("account"))
         balance = float(data.get("balance", 0))
         equity = float(data.get("equity", 0))
-
         profit = equity - balance
 
         conn = sqlite3.connect("data.db")
