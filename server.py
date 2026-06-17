@@ -93,7 +93,10 @@ def check():
         if row is None:
             return jsonify({"status": "blocked"})
 
-        return jsonify({"status": str(row[0]).lower().strip()})
+        return jsonify({
+            "status": str(row[0]).lower().strip(),
+            "account": acc
+        })
 
     except Exception as e:
         return jsonify({"status": "blocked"})
