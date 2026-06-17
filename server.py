@@ -88,6 +88,8 @@ def check():
         )
 
         row = c.fetchone()
+        print("ACCOUNT =", acc)
+        print("ROW =", row)
         conn.close()
 
         if row is None:
