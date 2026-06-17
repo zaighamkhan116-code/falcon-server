@@ -165,9 +165,9 @@ def panel():
 
         data = c.fetchall()
 
-print("PANEL DATA =", data)
+        print("PANEL DATA =", data)
 
-conn.close()
+        conn.close()
 
     total_daily = sum([row[3] for row in data])
     total_weekly = total_daily
