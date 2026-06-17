@@ -122,7 +122,7 @@ def check():
 
         if row is None:
             return jsonify({"status": "blocked"})
-        })
+        
 
         except Exception as e:
             print("CHECK ERROR =", e)
