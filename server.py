@@ -91,6 +91,7 @@ def update():
 
 @app.route("/check", methods=["POST"])
 def check():
+    print("CHECK ROUTE HIT")
     try:
         data = request.get_json(force=True)
 
