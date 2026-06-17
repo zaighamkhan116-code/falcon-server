@@ -89,9 +89,9 @@ def check():
         conn.close()
 
         if row:
-        return jsonify({"status": row[0]})
+            return jsonify({"status": row[0]})
 
-    return jsonify({"status": "blocked"})
+        return jsonify({"status": "blocked"})
 
     except Exception as e:
         print("CHECK ERROR:", e)
