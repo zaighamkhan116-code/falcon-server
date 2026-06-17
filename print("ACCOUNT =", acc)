@@ -98,7 +98,7 @@ def check():
         if not data:
             return jsonify({"status": "blocked"})
 
-        acc = str(data.get("account"))
+        acc = str(data.get("account")).strip()
 
         conn = sqlite3.connect("data.db")
         c = conn.cursor()
@@ -109,7 +109,7 @@ def check():
         )
 
         row = c.fetchone()
-        print("ACCOUNT =", acc)
+        print("ACCOUNT =", repr(acc))
         print("ROW =", row)
         conn.close()
 
@@ -122,7 +122,22 @@ def check():
         })
 
     except Exception as e:
+        print("CHECK ERROR =", e)
         return jsonify({"status": "blocked"})
+
+@app.route("/accounts")
+def accounts():
+
+    conn = sqlite3.connect("data.db")
+    c = conn.cursor()
+
+    c.execute("SELECT * FROM clients")
+
+    rows = c.fetchall()
+
+    conn.close()
+
+    return str(rows)
 # ================= DELETE =================
 
 @app.route("/delete/<acc>")
