@@ -72,31 +72,31 @@ def update():
 @app.route("/check", methods=["POST"])
 def check():
     try:
-        # ✅ FIX: force JSON read
         data = request.get_json(force=True)
 
         if not data:
-            return jsonify({"status": "active"})
+            return jsonify({"status": "blocked"})
 
         acc = str(data.get("account"))
 
         conn = sqlite3.connect("data.db")
         c = conn.cursor()
 
-        c.execute("SELECT status FROM clients WHERE account=?", (acc,))
-        row = c.fetchone()
+        c.execute(
+            "SELECT status FROM clients WHERE account=?",
+            (acc,)
+        )
 
+        row = c.fetchone()
         conn.close()
 
-        if row:
-            return jsonify({"status": row[0]})
+        if row is None:
+            return jsonify({"status": "blocked"})
 
-        return jsonify({"status": "blocked"})
+        return jsonify({"status": str(row[0]).lower().strip()})
 
     except Exception as e:
-        print("CHECK ERROR:", e)
-        return jsonify({"status": "active"})
-
+        return jsonify({"status": "blocked"})
 # ================= DELETE =================
 
 @app.route("/delete/<acc>")
