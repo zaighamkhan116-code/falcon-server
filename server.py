@@ -109,21 +109,24 @@ def check():
         )
 
         row = c.fetchone()
+
         print("ACCOUNT =", repr(acc))
         print("ROW =", row)
+
+        if row is None:
+            print("ACCOUNT NOT FOUND =", repr(acc))
+        else:
+            print("STATUS RETURNED =", row[0])
+
         conn.close()
 
         if row is None:
             return jsonify({"status": "blocked"})
-
-        return jsonify({
-            "status": str(row[0]).lower().strip(),
-            "account": acc
         })
 
-    except Exception as e:
-        print("CHECK ERROR =", e)
-        return jsonify({"status": "blocked"})
+        except Exception as e:
+            print("CHECK ERROR =", e)
+            return jsonify({"status": "blocked"})
 
 @app.route("/accounts")
 def accounts():
