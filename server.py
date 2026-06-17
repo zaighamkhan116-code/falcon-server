@@ -49,7 +49,7 @@ def update():
 
         data = json.loads(raw)
 
-        acc = str(data.get("account")).strip()
+        acc = str(data.get("account"))
 
         print("ACCOUNT RECEIVED =", repr(acc))
         balance = float(data.get("balance", 0))
