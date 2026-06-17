@@ -141,8 +141,6 @@ def delete(acc):
 
 @app.route("/", methods=["GET", "POST"])
 def panel():
-
-```
 conn = sqlite3.connect("data.db")
 c = conn.cursor()
 
