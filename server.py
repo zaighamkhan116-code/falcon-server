@@ -39,7 +39,11 @@ def update():
         print("UPDATE ROUTE HIT V2")
         print("RAW DATA =", request.data)
 
-        data = request.get_json(silent=True)
+        import json
+
+        raw = request.data.decode("utf-8").rstrip("\x00")
+
+        data = json.loads(raw)
 
         if data is None:
             print("NO JSON RECEIVED")
