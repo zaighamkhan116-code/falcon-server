@@ -307,15 +307,6 @@ td, th {{
 <div class="container">
 
 <div class="box">
-<h3>Check Status</h3>
-<form method="POST" action="/check">
-<input name="account" placeholder="Account">
-<br>
-<button>ENTER</button>
-</form>
-</div>
-
-<div class="box">
 <h3>Add / Update Account</h3>
 <form method="POST">
 <input name="account" placeholder="Account" required>
