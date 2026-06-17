@@ -158,10 +158,10 @@ def panel():
         conn.commit()
 
     # ALWAYS LOAD DATA
-    c.execute("""
-    SELECT c.account, c.status,
-       IFNULL(p.balance,0),
-       IFNULL(p.profit,0)
+        c.execute("""
+        SELECT c.account, c.status,
+        IFNULL(p.balance,0),
+        IFNULL(p.profit,0)
     FROM clients c
     LEFT JOIN profits p ON c.account = p.account
     """)
