@@ -33,40 +33,55 @@ def init_db():
 init_db()
 
 # ================= UPDATE (MT5 DATA) =================
-
 @app.route("/update", methods=["POST"])
 def update():
     try:
-        # ✅ FIX: force JSON read
-        data = request.get_json(force=True)
 
-        if not data:
-            return "No JSON", 400
+        print("RAW DATA =", request.data)
+
+        data = request.get_json(silent=True)
+
+        if data is None:
+            print("NO JSON RECEIVED")
+            return "OK"
 
         acc = str(data.get("account"))
         balance = float(data.get("balance", 0))
         equity = float(data.get("equity", 0))
+
         profit = equity - balance
 
         conn = sqlite3.connect("data.db")
         c = conn.cursor()
 
         c.execute("""
-        INSERT OR REPLACE INTO profits (account, balance, equity, profit, date)
+        INSERT OR REPLACE INTO profits
+        (account, balance, equity, profit, date)
         VALUES (?, ?, ?, ?, ?)
-        """, (acc, balance, equity, profit, datetime.now().strftime("%Y-%m-%d")))
+        """,
+        (
+            acc,
+            balance,
+            equity,
+            profit,
+            datetime.now().strftime("%Y-%m-%d")
+        ))
 
         conn.commit()
         conn.close()
 
-        print("UPDATE OK:", acc, balance, equity)
+        print(
+            "UPDATE OK:",
+            acc,
+            balance,
+            equity
+        )
 
         return "OK"
 
     except Exception as e:
         print("UPDATE ERROR:", e)
         return "ERROR", 500
-
 # ================= LICENSE CHECK =================
 
 @app.route("/check", methods=["POST"])
