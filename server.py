@@ -144,7 +144,7 @@ def panel():
     c = conn.cursor()
 
     if request.method == "POST":
-        acc = request.form.get("account")
+        acc = request.form.get("account").strip()
         status = request.form.get("status")
 
         if acc:
