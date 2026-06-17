@@ -146,27 +146,31 @@ def panel():
     c = conn.cursor()
 
     if request.method == "POST":
-        acc = request.form.get("account").strip()
-        status = request.form.get("status")
+    acc = request.form.get("account")
+    status = request.form.get("status")
 
-        if acc:
-            c.execute("""
-            INSERT INTO clients(account, status)
-            VALUES (?, ?)
-            ON CONFLICT(account) DO UPDATE SET status=excluded.status
-            """, (acc, status))
-            conn.commit()
+    if acc:
+        c.execute("""
+        INSERT INTO clients(account, status)
+        VALUES (?, ?)
+        ON CONFLICT(account) DO UPDATE SET status=excluded.status
+        """, (acc, status))
+        conn.commit()
 
-    # LOAD DATA FOR BOTH GET AND POST
+    # ALWAYS LOAD DATA
     c.execute("""
     SELECT c.account, c.status,
-           IFNULL(p.balance,0),
-           IFNULL(p.profit,0)
+       IFNULL(p.balance,0),
+       IFNULL(p.profit,0)
     FROM clients c
     LEFT JOIN profits p ON c.account = p.account
     """)
 
     data = c.fetchall()
+
+    print("PANEL DATA =", data)
+
+    conn.close()
 
     print("PANEL DATA =", data)
 
