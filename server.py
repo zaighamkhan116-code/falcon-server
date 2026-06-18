@@ -207,11 +207,11 @@ def panel():
     SELECT c.account,
            c.status,
            IFNULL(p.balance,0),
-           IFNULL(p.profit,0)
+           IFNULL(p.profit,0),
            IFNULL(p.daily,0),
            IFNULL(p.weekly,0),
            IFNULL(p.monthly,0),
-           IFNULL(p.overall,0)
+           IFNULL(p.overall,0),
            
     FROM clients c
     LEFT JOIN profits p
@@ -231,7 +231,7 @@ def panel():
     total_overall = sum(row[7] for row in data)
     rows_html = ""
     i = 1
-    for acc, status, balance, profit, daily, weekly, monthly, overall in data:or acc, status, balance, profit in data:
+    for acc, status, balance, profit, daily, weekly, monthly, overall in data:
 
         status_color = "green" if status == "active" else "red"
         profit_color = "green" if profit >= 0 else "red"
