@@ -3,7 +3,30 @@ import sqlite3
 from datetime import datetime
 
 app = Flask(__name__)
+USERNAME = "zaigham"
+PASSWORD = "MCdgsp4@"
 
+def check_auth(username, password):
+    return username == USERNAME and password == PASSWORD
+
+def authenticate():
+    return Response(
+        "Login Required",
+        401,
+        {"WWW-Authenticate": 'Basic realm="Login Required"'}
+    )
+
+@app.before_request
+def protect_dashboard():
+
+    # MT5 endpoints stay open
+    if request.path in ["/update", "/check"]:
+        return
+
+    auth = request.authorization
+
+    if not auth or not check_auth(auth.username, auth.password):
+        return authenticate()
 # ================= DATABASE =================
 
 def init_db():
