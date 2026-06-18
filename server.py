@@ -18,12 +18,17 @@ def init_db():
     """)
 
     c.execute("""
+    c.execute("""
     CREATE TABLE IF NOT EXISTS profits (
-        account TEXT PRIMARY KEY,
-        balance REAL,
-        equity REAL,
-        profit REAL,
-        date TEXT
+           account TEXT PRIMARY KEY,
+           balance REAL,
+           equity REAL,
+           profit REAL,
+           daily REAL DEFAULT 0,
+           weekly REAL DEFAULT 0,
+           monthly REAL DEFAULT 0,
+           overall REAL DEFAULT 0,
+           date TEXT
     )
     """)
 
@@ -54,6 +59,12 @@ def update():
         print("ACCOUNT RECEIVED =", repr(acc))
         balance = float(data.get("balance", 0))
         equity = float(data.get("equity", 0))
+        profit = float(data.get("profit", 0))
+
+        daily   = float(data.get("daily", 0))
+        weekly  = float(data.get("weekly", 0))
+        monthly = float(data.get("monthly", 0))
+        overall = float(data.get("overall", 0))
         profit = equity - balance
 
         conn = sqlite3.connect("data.db")
@@ -61,16 +72,21 @@ def update():
 
         c.execute("""
         INSERT OR REPLACE INTO profits
-        (account, balance, equity, profit, date)
-        VALUES (?, ?, ?, ?, ?)
+        (account, balance, equity, profit,
+         daily, weekly, monthly, overall, date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             acc,
             balance,
             equity,
             profit,
+            daily,
+            weekly,
+            monthly,
+            overall,
             datetime.now().strftime("%Y-%m-%d")
-        ))
+        )
 
         conn.commit()
         conn.close()
@@ -192,6 +208,11 @@ def panel():
            c.status,
            IFNULL(p.balance,0),
            IFNULL(p.profit,0)
+           IFNULL(p.daily,0),
+           IFNULL(p.weekly,0),
+           IFNULL(p.monthly,0),
+           IFNULL(p.overall,0)
+           
     FROM clients c
     LEFT JOIN profits p
            ON c.account = p.account
@@ -204,15 +225,13 @@ def panel():
 
     conn.close()
 
-    total_daily = sum(row[3] for row in data)
-    total_weekly = total_daily
-    total_monthly = total_daily
-    total_overall = total_daily
-
+    total_daily   = sum(row[4] for row in data)
+    total_weekly  = sum(row[5] for row in data)
+    total_monthly = sum(row[6] for row in data)
+    total_overall = sum(row[7] for row in data)
     rows_html = ""
     i = 1
-
-    for acc, status, balance, profit in data:
+    for acc, status, balance, profit, daily, weekly, monthly, overall in data:or acc, status, balance, profit in data:
 
         status_color = "green" if status == "active" else "red"
         profit_color = "green" if profit >= 0 else "red"
@@ -224,11 +243,11 @@ def panel():
             <td style='color:{status_color};font-weight:bold;'>{status}</td>
             <td>-</td>
             <td>{round(balance,2)}</td>
-            <td style='color:{profit_color}'>{round(profit,2)}</td>
-            <td style='color:{profit_color}'>{round(profit,2)}</td>
-            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td style='color:{profit_color}'>{round(daily,2)}</td>
+            <td style='color:{profit_color}'>{round(weekly,2)}</td>
+            <td style='color:{profit_color}'>{round(monthly,2)}</td>
             <td>0</td>
-            <td style='color:{profit_color}'>{round(profit,2)}</td>
+            <td style='color:{profit_color}'>{round(overall,2)}</td>
             <td>
                 <a href="/delete/{acc}">
                     Delete
