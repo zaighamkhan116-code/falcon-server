@@ -18,7 +18,6 @@ def init_db():
     """)
 
     c.execute("""
-    c.execute("""
     CREATE TABLE IF NOT EXISTS profits (
            account TEXT PRIMARY KEY,
            balance REAL,
@@ -86,7 +85,7 @@ def update():
             monthly,
             overall,
             datetime.now().strftime("%Y-%m-%d")
-        )
+        ))
 
         conn.commit()
         conn.close()
@@ -211,7 +210,7 @@ def panel():
            IFNULL(p.daily,0),
            IFNULL(p.weekly,0),
            IFNULL(p.monthly,0),
-           IFNULL(p.overall,0),
+           IFNULL(p.overall,0)
            
     FROM clients c
     LEFT JOIN profits p
