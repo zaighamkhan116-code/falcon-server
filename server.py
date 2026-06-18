@@ -233,8 +233,11 @@ def panel():
     for acc, status, balance, profit, daily, weekly, monthly, overall in data:
 
         status_color = "green" if status == "active" else "red"
-        profit_color = "green" if profit >= 0 else "red"
-
+        daily_color   = "green" if daily >= 0 else "red"
+        weekly_color  = "green" if weekly >= 0 else "red"
+        monthly_color = "green" if monthly >= 0 else "red"
+        overall_color = "green" if overall >= 0 else "red"
+        
         rows_html += f"""
         <tr>
             <td>{i}</td>
@@ -242,11 +245,11 @@ def panel():
             <td style='color:{status_color};font-weight:bold;'>{status}</td>
             <td>-</td>
             <td>{round(balance,2)}</td>
-            <td style='color:{profit_color}'>{round(daily,2)}</td>
-            <td style='color:{profit_color}'>{round(weekly,2)}</td>
-            <td style='color:{profit_color}'>{round(monthly,2)}</td>
+            <td style='color:{"green" if daily >= 0 else "red"}'>{round(daily,2)}</td>
+            <td style='color:{"green" if weekly >= 0 else "red"}'>{round(weekly,2)}</td>
+            <td style='color:{"green" if monthly >= 0 else "red"}'>{round(monthly,2)}</td>
             <td>0</td>
-            <td style='color:{profit_color}'>{round(overall,2)}</td>
+            <td style='color:{"green" if overall >= 0 else "red"}'>{round(overall,2)}</td>
             <td>
                 <a href="/delete/{acc}">
                     Delete
